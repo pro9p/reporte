@@ -1255,11 +1255,15 @@
     <!-- ================================================================ -->
     <script>
         Chart.register(ChartDataLabels);
-        // ============ HORARIO LABORAL (editar aquí si cambia) ============
+        // ============ HORARIO LABORAL ============
 const HORARIO_LABORAL = {
-    horaInicio: 8,
-    horaFin: 20,
-    diasLaborales: [1,2,3,4,5,6],  // 0=Dom, 1=Lun, ..., 6=Sáb
+    // Día: 8:00 a 20:00
+    // Noche: 20:00 a 08:00 (cruza medianoche)
+    rangos: [
+        { inicio: 8, fin: 20 },
+        { inicio: 20, fin: 8 }
+    ],
+    diasLaborales: [1, 2, 3, 4, 5, 6],  // Lunes a Sábado
     feriados: [
         '2026-01-01','2026-04-02','2026-04-03','2026-05-01','2026-06-29',
         '2026-07-28','2026-07-29','2026-08-30','2026-10-08','2026-11-01',
@@ -1269,15 +1273,13 @@ const HORARIO_LABORAL = {
 
 function minutosLaborales(desde, hasta) {
     if (!desde || !hasta || hasta < desde) return null;
-    const HI = HORARIO_LABORAL.horaInicio;
-    const HF = HORARIO_LABORAL.horaFin;
     const DIAS = HORARIO_LABORAL.diasLaborales;
     const FER = new Set(HORARIO_LABORAL.feriados);
+    const RANGOS = HORARIO_LABORAL.rangos;
 
-    function esLaboral(d) {
-        if (!DIAS.includes(d.getDay())) return false;
+    function esFeriado(d) {
         const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-        return !FER.has(k);
+        return FER.has(k);
     }
 
     let total = 0;
@@ -1287,22 +1289,45 @@ function minutosLaborales(desde, hasta) {
 
     while (cursor < fin && i < 400) {
         i++;
-        if (!esLaboral(cursor)) {
+        const diaSemana = cursor.getDay();
+
+        // Verificar si este día cuenta
+        if (!DIAS.includes(diaSemana) || esFeriado(cursor)) {
             cursor.setDate(cursor.getDate() + 1);
-            cursor.setHours(0,0,0,0);
+            cursor.setHours(0, 0, 0, 0);
             continue;
         }
-        const dIni = new Date(cursor); dIni.setHours(HI,0,0,0);
-        const dFin = new Date(cursor); dFin.setHours(HF,0,0,0);
-        const rIni = cursor > dIni ? cursor : dIni;
-        const rFin = fin < dFin ? fin : dFin;
-        if (rIni < rFin) total += (rFin - rIni) / 60000;
+
+        // Recorrer todos los rangos del día
+        for (const r of RANGOS) {
+            let rIni = new Date(cursor);
+            let rFin = new Date(cursor);
+
+            if (r.inicio < r.fin) {
+                // Rango normal (ej: 8-20)
+                rIni.setHours(r.inicio, 0, 0, 0);
+                rFin.setHours(r.fin, 0, 0, 0);
+            } else {
+                // Rango que cruza medianoche (ej: 20-8)
+                // Empieza HOY a las 20:00 y termina MAÑANA a las 8:00
+                rIni.setHours(r.inicio, 0, 0, 0);
+                rFin.setDate(rFin.getDate() + 1);
+                rFin.setHours(r.fin, 0, 0, 0);
+            }
+
+            const rangoIni = cursor > rIni ? cursor : rIni;
+            const rangoFin = fin < rFin ? fin : rFin;
+            if (rangoIni < rangoFin) {
+                total += (rangoFin - rangoIni) / 60000;
+            }
+        }
+
         cursor.setDate(cursor.getDate() + 1);
-        cursor.setHours(0,0,0,0);
+        cursor.setHours(0, 0, 0, 0);
     }
+
     return total;
 }
-
         // ============ FORMATEADORES SIN LOCALE ============
         function fmtNum(n) {
             if (n === null || n === undefined || isNaN(n)) return '0';
