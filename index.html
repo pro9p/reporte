@@ -1281,6 +1281,10 @@ function minutosLaborales(desde, hasta) {
         return FER.has(k);
     }
 
+    function esDiaLaboral(d) {
+        return DIAS.includes(d.getDay()) && !esFeriado(d);
+    }
+
     let total = 0;
     let cursor = new Date(desde);
     const fin = new Date(hasta);
@@ -1290,32 +1294,53 @@ function minutosLaborales(desde, hasta) {
         i++;
         const diaSemana = cursor.getDay();
 
-        // ¿Es día laboral?
-        if (!DIAS.includes(diaSemana) || esFeriado(cursor)) {
+        // Si NO es día laboral, avanzar
+        if (!esDiaLaboral(cursor)) {
             cursor.setDate(cursor.getDate() + 1);
             cursor.setHours(0, 0, 0, 0);
             continue;
         }
 
-        // Recorrer todos los rangos del día (día + noche)
-        for (const r of RANGOS) {
-            let rIni, rFin;
-            if (r.inicio < r.fin) {
-                // Rango normal: 8-20
-                rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
-                rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
-            } else {
-                // Rango que cruza medianoche: 20-8
-                // Empieza HOY a las 20:00 y termina MAÑANA a las 8:00
-                rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
-                rFin = new Date(cursor); rFin.setDate(rFin.getDate() + 1);
-                rFin.setHours(r.fin, 0, 0, 0);
-            }
+        // Recorrer rangos DE HOY y también el turno noche de AYER
+        // (por si el pedido cae en la madrugada del turno noche de ayer)
+        const rangosARevisar = [];
 
-            const rangoIni = cursor > rIni ? cursor : rIni;
-            const rangoFin = fin < rFin ? fin : rFin;
-            if (rangoIni < rangoFin) {
-                total += (rangoFin - rangoIni) / 60000;
+        // Rango noche del día anterior (empieza ayer y termina hoy)
+        // Esto es para pedidos de madrugada que pertenecen al turno de ayer
+        const ayer = new Date(cursor);
+        ayer.setDate(ayer.getDate() - 1);
+        if (esDiaLaboral(ayer)) {
+            for (const r of RANGOS) {
+                if (r.inicio > r.fin) {
+                    // Rango que cruza medianoche (20-8)
+                    const rIni = new Date(ayer); rIni.setHours(r.inicio, 0, 0, 0);
+                    const rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
+                    rangosARevisar.push({ ini: rIni, fin: rFin });
+                }
+            }
+        }
+
+        // Rangos normales de hoy
+        for (const r of RANGOS) {
+            if (r.inicio < r.fin) {
+                // Día normal (8-20)
+                const rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
+                const rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
+                rangosARevisar.push({ ini: rIni, fin: rFin });
+            } else {
+                // Noche (20-8): empieza HOY a las 20 y termina MAÑANA
+                const rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
+                const rFin = new Date(cursor); rFin.setDate(rFin.getDate() + 1); rFin.setHours(r.fin, 0, 0, 0);
+                rangosARevisar.push({ ini: rIni, fin: rFin });
+            }
+        }
+
+        // Sumar los rangos efectivos
+        for (const r of rangosARevisar) {
+            const rIni = cursor > r.ini ? cursor : r.ini;
+            const rFin = fin < r.fin ? fin : r.fin;
+            if (rIni < rFin) {
+                total += (rFin - rIni) / 60000;
             }
         }
 
