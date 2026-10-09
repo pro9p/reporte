@@ -1724,7 +1724,7 @@ function minutosLaborales(desde, hasta) {
                             let nR = obtenerNombreUsuario(uP);
                             if (!pickM[uP]) pickM[uP] = { id: uP, nombre: nR, pedidos: 0, sku: 0, cantidad: 0, sumLeadTime: 0, countLeadTime: 0 };
                             pickM[uP].pedidos++; pickM[uP].sku += skV; pickM[uP].cantidad += cV;
-                            if (dm > 0 && dm <= 600) { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
+                            if (dm > 5 && dm <= 600) { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
                             const kD = obtenerFechaLocal(dP);
                             if (kD) {
                                 if (!dailyPickingUsersMap[kD]) dailyPickingUsersMap[kD] = {};
@@ -1734,7 +1734,7 @@ function minutosLaborales(desde, hasta) {
                                 dailyPickingUsersMap[kD][uP].pedidos++;
                                 dailyPickingUsersMap[kD][uP].sku += skV;
                                 dailyPickingUsersMap[kD][uP].cantidad += cV;
-                                if (dm > 0 && dm <= 600) {
+                                if (dm > 5 && dm <= 600) {
                                     dailyPickingUsersMap[kD][uP].sumLeadTime += dm;
                                     dailyPickingUsersMap[kD][uP].countLeadTime++;
                                 }
