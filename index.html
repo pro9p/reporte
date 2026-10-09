@@ -1766,13 +1766,13 @@ function minutosLaborales(desde, hasta) {
                     if (dP && dentroDeRangoFecha(dP, fIni, fFin)) {
                         cP++;
                         let dm = 0;
-                        if (dR && dP >= dR) { dm = minutosLaborales(dR, dP) || 0; if (dm >= 5 && dm <= 600) { totLTP += dm; cntLTP++; } }
+                       if (dR && dP >= dR) { dm = minutosLaborales(dR, dP) || 0; if (dm >= 5 && dm <= 600) { totLTP += dm; cntLTP++; } }
                         let uP = String(row['USUARIO PREPARADO'] || '').trim().replace('.0','');
                         if (uP && uP !== 'null') {
                             let nR = obtenerNombreUsuario(uP);
                             if (!pickM[uP]) pickM[uP] = { id: uP, nombre: nR, pedidos: 0, sku: 0, cantidad: 0, sumLeadTime: 0, countLeadTime: 0 };
                             pickM[uP].pedidos++; pickM[uP].sku += skV; pickM[uP].cantidad += cV;
-                            if (dm > 5 && dm <= 600) { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
+                            if (dm >= 5 && dm <= 600) { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
                             const kD = obtenerFechaLocal(dP);
                             if (kD) {
                                 if (!dailyPickingUsersMap[kD]) dailyPickingUsersMap[kD] = {};
@@ -1782,7 +1782,7 @@ function minutosLaborales(desde, hasta) {
                                 dailyPickingUsersMap[kD][uP].pedidos++;
                                 dailyPickingUsersMap[kD][uP].sku += skV;
                                 dailyPickingUsersMap[kD][uP].cantidad += cV;
-                                if (dm > 5 && dm <= 600) {
+                                if (dm >= 5 && dm <= 600) {
                                     dailyPickingUsersMap[kD][uP].sumLeadTime += dm;
                                     dailyPickingUsersMap[kD][uP].countLeadTime++;
                                 }
@@ -3980,11 +3980,11 @@ function minutosLaborales(desde, hasta) {
 
             // ============ 1. TIEMPOS PROMEDIO ENTRE ETAPAS ============
             let sumDI = 0, cntDI = 0, sumIR = 0, cntIR = 0, sumRP = 0, cntRP = 0, sumPE = 0, cntPE = 0, sumED = 0, cntED = 0;
-            const minsEntre = (a, b) => {
-    if (!a || !b) return null;
-    const d = minutosLaborales(a, b);
-    return (d !== null && d >= 0 && d <= 10080) ? d : null;
-};
+                const minsEntre = (a, b) => {
+                if (!a || !b) return null;
+                const d = minutosLaborales(a, b);
+                return (d !== null && d >= 0 && d <= 10080) ? d : null;
+            };
 
             datosFiltrados.forEach(row => {
                 const dF = cDigF ? normalizarFecha(row[cDigF]) : null;
