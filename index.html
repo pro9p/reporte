@@ -1263,14 +1263,13 @@ const HORARIO_LABORAL = {
         { inicio: 8, fin: 20 },
         { inicio: 20, fin: 8 }
     ],
-    diasLaborales: [1, 2, 3, 4, 5, 6],  // Lunes a Sábado
+    diasLaborales: [1, 2, 3, 4, 5, 6],  // 0=Dom, 1=Lun, ..., 6=Sáb
     feriados: [
         '2026-01-01','2026-04-02','2026-04-03','2026-05-01','2026-06-29',
         '2026-07-28','2026-07-29','2026-08-30','2026-10-08','2026-11-01',
         '2026-12-08','2026-12-25'
     ]
 };
-
 function minutosLaborales(desde, hasta) {
     if (!desde || !hasta || hasta < desde) return null;
     const DIAS = HORARIO_LABORAL.diasLaborales;
@@ -1291,27 +1290,25 @@ function minutosLaborales(desde, hasta) {
         i++;
         const diaSemana = cursor.getDay();
 
-        // Verificar si este día cuenta
+        // ¿Es día laboral?
         if (!DIAS.includes(diaSemana) || esFeriado(cursor)) {
             cursor.setDate(cursor.getDate() + 1);
             cursor.setHours(0, 0, 0, 0);
             continue;
         }
 
-        // Recorrer todos los rangos del día
+        // Recorrer todos los rangos del día (día + noche)
         for (const r of RANGOS) {
-            let rIni = new Date(cursor);
-            let rFin = new Date(cursor);
-
+            let rIni, rFin;
             if (r.inicio < r.fin) {
-                // Rango normal (ej: 8-20)
-                rIni.setHours(r.inicio, 0, 0, 0);
-                rFin.setHours(r.fin, 0, 0, 0);
+                // Rango normal: 8-20
+                rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
+                rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
             } else {
-                // Rango que cruza medianoche (ej: 20-8)
+                // Rango que cruza medianoche: 20-8
                 // Empieza HOY a las 20:00 y termina MAÑANA a las 8:00
-                rIni.setHours(r.inicio, 0, 0, 0);
-                rFin.setDate(rFin.getDate() + 1);
+                rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
+                rFin = new Date(cursor); rFin.setDate(rFin.getDate() + 1);
                 rFin.setHours(r.fin, 0, 0, 0);
             }
 
