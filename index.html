@@ -1257,98 +1257,74 @@
         Chart.register(ChartDataLabels);
         // ============ HORARIO LABORAL ============
 const HORARIO_LABORAL = {
-    // Día: 8:00 a 20:00
-    // Noche: 20:00 a 08:00 (cruza medianoche)
-    rangos: [
-        { inicio: 8, fin: 20 },
-        { inicio: 20, fin: 8 }
-    ],
-    diasLaborales: [1, 2, 3, 4, 5, 6],  // 0=Dom, 1=Lun, ..., 6=Sáb
+    // 0=Dom, 1=Lun, ..., 6=Sáb
+    // Lun-Vie: todo el día | Sáb: hasta 14:30 | Dom: no laboral
+    horaCorteSabado: { horas: 14, minutos: 30 },
     feriados: [
         '2026-01-01','2026-04-02','2026-04-03','2026-05-01','2026-06-29',
         '2026-07-28','2026-07-29','2026-08-30','2026-10-08','2026-11-01',
         '2026-12-08','2026-12-25'
     ]
 };
+
 function minutosLaborales(desde, hasta) {
-    if (!desde || !hasta || hasta < desde) return null;
-    const DIAS = HORARIO_LABORAL.diasLaborales;
+    if (!desde || !hasta || hasta <= desde) return 0;
+
     const FER = new Set(HORARIO_LABORAL.feriados);
-    const RANGOS = HORARIO_LABORAL.rangos;
+    const CORTE_SAB = HORARIO_LABORAL.horaCorteSabado;
 
     function esFeriado(d) {
-        const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        const k = d.getFullYear() + '-' +
+                  String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(d.getDate()).padStart(2, '0');
         return FER.has(k);
     }
 
-    function esDiaLaboral(d) {
-        return DIAS.includes(d.getDay()) && !esFeriado(d);
+    // Devuelve el fin del horario laboral de un día dado, o null si no es laboral
+    function finLaboralDelDia(d) {
+        if (esFeriado(d)) return null;
+        const dow = d.getDay();
+        if (dow === 0) return null;              // Domingo: no laboral
+        if (dow === 6) {                         // Sábado: hasta 14:30
+            const f = new Date(d);
+            f.setHours(CORTE_SAB.horas, CORTE_SAB.minutos, 0, 0);
+            return f;
+        }
+        // Lun-Vie: todo el día → fin = 00:00 del día siguiente
+        const f = new Date(d);
+        f.setDate(f.getDate() + 1);
+        f.setHours(0, 0, 0, 0);
+        return f;
     }
 
-    let total = 0;
+    function inicioLaboralDelDia(d) {
+        // Todos los días laborales empiezan a las 00:00
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    }
+
+    let totalMin = 0;
     let cursor = new Date(desde);
     const fin = new Date(hasta);
-    let i = 0;
 
-    while (cursor < fin && i < 400) {
-        i++;
-        const diaSemana = cursor.getDay();
+    while (cursor < fin) {
+        const dia = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+        const finLab = finLaboralDelDia(dia);
 
-        // Si NO es día laboral, avanzar
-        if (!esDiaLaboral(cursor)) {
-            cursor.setDate(cursor.getDate() + 1);
-            cursor.setHours(0, 0, 0, 0);
-            continue;
-        }
-
-        // Recorrer rangos DE HOY y también el turno noche de AYER
-        // (por si el pedido cae en la madrugada del turno noche de ayer)
-        const rangosARevisar = [];
-
-        // Rango noche del día anterior (empieza ayer y termina hoy)
-        // Esto es para pedidos de madrugada que pertenecen al turno de ayer
-        const ayer = new Date(cursor);
-        ayer.setDate(ayer.getDate() - 1);
-        if (esDiaLaboral(ayer)) {
-            for (const r of RANGOS) {
-                if (r.inicio > r.fin) {
-                    // Rango que cruza medianoche (20-8)
-                    const rIni = new Date(ayer); rIni.setHours(r.inicio, 0, 0, 0);
-                    const rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
-                    rangosARevisar.push({ ini: rIni, fin: rFin });
-                }
+        if (finLab !== null) {
+            const iniLab = inicioLaboralDelDia(dia);
+            const tramoIni = cursor > iniLab ? cursor : iniLab;
+            const tramoFin = fin < finLab ? fin : finLab;
+            if (tramoIni < tramoFin) {
+                totalMin += (tramoFin - tramoIni) / 60000;
             }
         }
 
-        // Rangos normales de hoy
-        for (const r of RANGOS) {
-            if (r.inicio < r.fin) {
-                // Día normal (8-20)
-                const rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
-                const rFin = new Date(cursor); rFin.setHours(r.fin, 0, 0, 0);
-                rangosARevisar.push({ ini: rIni, fin: rFin });
-            } else {
-                // Noche (20-8): empieza HOY a las 20 y termina MAÑANA
-                const rIni = new Date(cursor); rIni.setHours(r.inicio, 0, 0, 0);
-                const rFin = new Date(cursor); rFin.setDate(rFin.getDate() + 1); rFin.setHours(r.fin, 0, 0, 0);
-                rangosARevisar.push({ ini: rIni, fin: rFin });
-            }
-        }
-
-        // Sumar los rangos efectivos
-        for (const r of rangosARevisar) {
-            const rIni = cursor > r.ini ? cursor : r.ini;
-            const rFin = fin < r.fin ? fin : r.fin;
-            if (rIni < rFin) {
-                total += (rFin - rIni) / 60000;
-            }
-        }
-
+        // Avanzar al inicio del día siguiente
+        cursor = new Date(dia);
         cursor.setDate(cursor.getDate() + 1);
-        cursor.setHours(0, 0, 0, 0);
     }
 
-    return total;
+    return totalMin;
 }
         // ============ FORMATEADORES SIN LOCALE ============
         function fmtNum(n) {
@@ -1766,13 +1742,13 @@ function minutosLaborales(desde, hasta) {
                     if (dP && dentroDeRangoFecha(dP, fIni, fFin)) {
                         cP++;
                         let dm = 0;
-                       if (dR && dP >= dR) { dm = minutosLaborales(dR, dP) || 0; if (dm >= 5 && dm <= 600) { totLTP += dm; cntLTP++; } }
+                       if (dR && dP >= dR) { dm = minutosLaborales(dR, dP) || 0; if (dm >= 1 && dm <= 20160)    { totLTP += dm; cntLTP++; } }
                         let uP = String(row['USUARIO PREPARADO'] || '').trim().replace('.0','');
                         if (uP && uP !== 'null') {
                             let nR = obtenerNombreUsuario(uP);
                             if (!pickM[uP]) pickM[uP] = { id: uP, nombre: nR, pedidos: 0, sku: 0, cantidad: 0, sumLeadTime: 0, countLeadTime: 0 };
                             pickM[uP].pedidos++; pickM[uP].sku += skV; pickM[uP].cantidad += cV;
-                            if (dm >= 5 && dm <= 600) { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
+                            if (dm >= 1 && dm <= 20160)   { pickM[uP].sumLeadTime += dm; pickM[uP].countLeadTime++; }
                             const kD = obtenerFechaLocal(dP);
                             if (kD) {
                                 if (!dailyPickingUsersMap[kD]) dailyPickingUsersMap[kD] = {};
@@ -1782,7 +1758,7 @@ function minutosLaborales(desde, hasta) {
                                 dailyPickingUsersMap[kD][uP].pedidos++;
                                 dailyPickingUsersMap[kD][uP].sku += skV;
                                 dailyPickingUsersMap[kD][uP].cantidad += cV;
-                                if (dm >= 5 && dm <= 600) {
+                                if (dm >= 1 && dm <= 20160)    {
                                     dailyPickingUsersMap[kD][uP].sumLeadTime += dm;
                                     dailyPickingUsersMap[kD][uP].countLeadTime++;
                                 }
