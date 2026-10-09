@@ -1231,7 +1231,31 @@
     </div>
 </div>
 
-    // ============ HORARIO LABORAL (editar aquí si cambia) ============
+    
+    <!-- MODAL PASSWORD -->
+    <div id="modalPassword" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+                <h3 class="text-sm font-bold">Confirmar Acción</h3>
+                <button onclick="cerrarModalPassword()" class="text-slate-400 hover:text-white text-lg font-bold px-2 py-1 rounded-lg transition"><span>✕</span></button>
+            </div>
+            <div class="p-4">
+                <p class="text-xs text-slate-600 mb-2">Ingresa la contraseña para deshacer la entrega:</p>
+                <input type="password" id="inputPassword" placeholder="Contraseña" class="w-full border rounded p-2 text-xs">
+                <input type="hidden" id="regsalidaPassword">
+                <button onclick="verificarPassword()" class="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition w-full">
+                    <span>🔓</span> Verificar
+                </button>
+            </div>
+        </div>
+    </div>
+
+        <!-- ================================================================ -->
+    <!-- JAVASCRIPT                                                       -->
+    <!-- ================================================================ -->
+    <script>
+        Chart.register(ChartDataLabels);
+        // ============ HORARIO LABORAL (editar aquí si cambia) ============
 const HORARIO_LABORAL = {
     horaInicio: 8,
     horaFin: 20,
@@ -1278,29 +1302,6 @@ function minutosLaborales(desde, hasta) {
     }
     return total;
 }
-    <!-- MODAL PASSWORD -->
-    <div id="modalPassword" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
-                <h3 class="text-sm font-bold">Confirmar Acción</h3>
-                <button onclick="cerrarModalPassword()" class="text-slate-400 hover:text-white text-lg font-bold px-2 py-1 rounded-lg transition"><span>✕</span></button>
-            </div>
-            <div class="p-4">
-                <p class="text-xs text-slate-600 mb-2">Ingresa la contraseña para deshacer la entrega:</p>
-                <input type="password" id="inputPassword" placeholder="Contraseña" class="w-full border rounded p-2 text-xs">
-                <input type="hidden" id="regsalidaPassword">
-                <button onclick="verificarPassword()" class="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition w-full">
-                    <span>🔓</span> Verificar
-                </button>
-            </div>
-        </div>
-    </div>
-
-        <!-- ================================================================ -->
-    <!-- JAVASCRIPT                                                       -->
-    <!-- ================================================================ -->
-    <script>
-        Chart.register(ChartDataLabels);
 
         // ============ FORMATEADORES SIN LOCALE ============
         function fmtNum(n) {
