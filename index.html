@@ -1230,6 +1230,54 @@
         </div>
     </div>
 </div>
+
+    // ============ HORARIO LABORAL (editar aquí si cambia) ============
+const HORARIO_LABORAL = {
+    horaInicio: 8,
+    horaFin: 20,
+    diasLaborales: [1,2,3,4,5,6],  // 0=Dom, 1=Lun, ..., 6=Sáb
+    feriados: [
+        '2026-01-01','2026-04-02','2026-04-03','2026-05-01','2026-06-29',
+        '2026-07-28','2026-07-29','2026-08-30','2026-10-08','2026-11-01',
+        '2026-12-08','2026-12-25'
+    ]
+};
+
+function minutosLaborales(desde, hasta) {
+    if (!desde || !hasta || hasta < desde) return null;
+    const HI = HORARIO_LABORAL.horaInicio;
+    const HF = HORARIO_LABORAL.horaFin;
+    const DIAS = HORARIO_LABORAL.diasLaborales;
+    const FER = new Set(HORARIO_LABORAL.feriados);
+
+    function esLaboral(d) {
+        if (!DIAS.includes(d.getDay())) return false;
+        const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        return !FER.has(k);
+    }
+
+    let total = 0;
+    let cursor = new Date(desde);
+    const fin = new Date(hasta);
+    let i = 0;
+
+    while (cursor < fin && i < 400) {
+        i++;
+        if (!esLaboral(cursor)) {
+            cursor.setDate(cursor.getDate() + 1);
+            cursor.setHours(0,0,0,0);
+            continue;
+        }
+        const dIni = new Date(cursor); dIni.setHours(HI,0,0,0);
+        const dFin = new Date(cursor); dFin.setHours(HF,0,0,0);
+        const rIni = cursor > dIni ? cursor : dIni;
+        const rFin = fin < dFin ? fin : dFin;
+        if (rIni < rFin) total += (rFin - rIni) / 60000;
+        cursor.setDate(cursor.getDate() + 1);
+        cursor.setHours(0,0,0,0);
+    }
+    return total;
+}
     <!-- MODAL PASSWORD -->
     <div id="modalPassword" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
@@ -1670,7 +1718,7 @@
                     if (dP && dentroDeRangoFecha(dP, fIni, fFin)) {
                         cP++;
                         let dm = 0;
-                        if (dR && dP >= dR) { dm = (dP - dR) / 60000; if (dm <= 600) { totLTP += dm; cntLTP++; } }
+                        if (dR && dP >= dR) { dm = minutosLaborales(dR, dP) || 0; if (dm >= 5 && dm <= 600) { totLTP += dm; cntLTP++; } }
                         let uP = String(row['USUARIO PREPARADO'] || '').trim().replace('.0','');
                         if (uP && uP !== 'null') {
                             let nR = obtenerNombreUsuario(uP);
@@ -3885,10 +3933,10 @@
             // ============ 1. TIEMPOS PROMEDIO ENTRE ETAPAS ============
             let sumDI = 0, cntDI = 0, sumIR = 0, cntIR = 0, sumRP = 0, cntRP = 0, sumPE = 0, cntPE = 0, sumED = 0, cntED = 0;
             const minsEntre = (a, b) => {
-                if (!a || !b) return null;
-                const d = (b - a) / 60000;
-                return (d >= 0 && d <= 10080) ? d : null;
-            };
+    if (!a || !b) return null;
+    const d = minutosLaborales(a, b);
+    return (d !== null && d >= 0 && d <= 10080) ? d : null;
+};
 
             datosFiltrados.forEach(row => {
                 const dF = cDigF ? normalizarFecha(row[cDigF]) : null;
